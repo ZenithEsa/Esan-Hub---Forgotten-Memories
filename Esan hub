@@ -1,0 +1,112 @@
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local RunService = game:GetService("RunService")
+local Lighting = game:GetService("Lighting")
+local UserInputService = game:GetService("UserInputService")
+
+local LocalPlayer = Players.LocalPlayer
+
+local targetNames = {
+	["Freddy"] = true,
+	["Bonnie"] = true,
+	["Chica"] = true,
+	["Foxy"] = true
+}
+
+local entityESPEnabled = true
+local playerESPEnabled = true
+local fullBrightEnabled = true
+
+local function applyFullBright()
+	if fullBrightEnabled then
+		Lighting.Ambient = Color3.fromRGB(150, 150, 150)
+		Lighting.OutdoorAmbient = Color3.fromRGB(150, 150, 150)
+		Lighting.Brightness = 3
+	else
+		Lighting.Ambient = Color3.fromRGB(60, 60, 60)
+		Lighting.OutdoorAmbient = Color3.fromRGB(60, 60, 60)
+		Lighting.Brightness = 2
+	end
+end
+
+local function createHighlight(targetModel, color)
+	if targetModel:FindFirstChild("ESP_HL") then return end
+	local hl = Instance.new("Highlight")
+	hl.Name = "ESP_HL"
+	hl.Adornee = targetModel
+	hl.FillTransparency = 1 
+	hl.OutlineTransparency = 0
+	hl.OutlineColor = color
+	hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+	hl.Parent = targetModel
+end
+
+local function removeAllHighlights()
+	for _, v in ipairs(Workspace:GetDescendants()) do
+		if v:IsA("Highlight") and v.Name == "ESP_HL" then
+			v:Destroy()
+		end
+	end
+end
+
+local function updateEntityESP()
+	for _, obj in ipairs(Workspace:GetChildren()) do
+		if obj:IsA("Model") and obj:FindFirstChild("HumanoidRootPart") and targetNames[obj.Name] then
+			if entityESPEnabled then
+				createHighlight(obj, Color3.fromRGB(255, 85, 0)) 
+			else
+				if obj:FindFirstChild("ESP_HL") then
+					obj:FindFirstChild("ESP_HL"):Destroy()
+				end
+			end
+		end
+	end
+end
+
+local function updatePlayerESP()
+	for _, player in pairs(Players:GetPlayers()) do
+		if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+			local char = player.Character
+			if playerESPEnabled then
+				createHighlight(char, Color3.fromRGB(0, 255, 255)) 
+			else
+				if char:FindFirstChild("ESP_HL") then
+					char:FindFirstChild("ESP_HL"):Destroy()
+				end
+			end
+		end
+	end
+end
+
+UserInputService.InputBegan:Connect(function(input, gp)
+	if gp then return end
+
+	if input.KeyCode == Enum.KeyCode.Zero then
+		fullBrightEnabled = not fullBrightEnabled
+		applyFullBright()
+		print("[FullBright] = " .. tostring(fullBrightEnabled))
+
+	elseif input.KeyCode == Enum.KeyCode.Nine then
+		entityESPEnabled = not entityESPEnabled
+		if not entityESPEnabled then removeAllHighlights() end
+		print("[Entity ESP] = " .. tostring(entityESPEnabled))
+
+	elseif input.KeyCode == Enum.KeyCode.Eight then
+		playerESPEnabled = not playerESPEnabled
+		if not playerESPEnabled then removeAllHighlights() end
+		print("[Player ESP] = " .. tostring(playerESPEnabled))
+	end
+end)
+
+local function waitForMap()
+	repeat task.wait() until Workspace:FindFirstChildWhichIsA("Model")
+	task.wait(1)
+end
+
+waitForMap()
+applyFullBright()
+
+RunService.RenderStepped:Connect(function()
+	if entityESPEnabled then updateEntityESP() end
+	if playerESPEnabled then updatePlayerESP() end
+end)
